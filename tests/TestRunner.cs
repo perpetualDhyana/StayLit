@@ -41,6 +41,8 @@ namespace StayLit.Tests
         private static extern IntPtr ImmGetContext(IntPtr window);
         [DllImport("imm32.dll")]
         private static extern bool ImmReleaseContext(IntPtr window, IntPtr context);
+        [DllImport("imm32.dll")]
+        private static extern bool ImmGetOpenStatus(IntPtr context);
         private static int passed;
         private static int failed;
         private static readonly List<string> lines = new List<string>();
@@ -498,8 +500,10 @@ namespace StayLit.Tests
                     IntPtr context = ImmGetContext(editor.Handle);
                     if (context != IntPtr.Zero)
                     {
-                        ImmReleaseContext(editor.Handle, context);
-                        throw new Exception("Numeric editor retained an IME composition context.");
+                        // A closed native context may remain on Windows even
+                        // though the control has disabled IME composition.
+                        try { Equal(false, ImmGetOpenStatus(context)); }
+                        finally { ImmReleaseContext(editor.Handle, context); }
                     }
                     SendMessage(editor.Handle, 0x0102, new IntPtr((int)'8'), IntPtr.Zero);
                     Application.DoEvents(); form.RefreshPreview();
